@@ -3,75 +3,196 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>WebMCP Lab</title>
+  <title>WebMCP 쇼핑 실험실</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 20px; }
-    .card { border: 1px solid #ccc; border-radius: 12px; padding: 20px; margin: 16px 0; }
-    button { padding: 10px 14px; margin-right: 8px; cursor: pointer; }
-    #status { font-size: 1.4rem; font-weight: 700; }
-    #log { white-space: pre-wrap; background: #f5f5f5; padding: 12px; border-radius: 8px; min-height: 120px; }
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 32px auto; padding: 0 20px; background: #fafafa; color: #222; }
+    h1 { margin-bottom: 8px; }
+    .intro { color: #555; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+    .card, .cart, .activity { background: white; border: 1px solid #ddd; border-radius: 12px; padding: 18px; margin: 16px 0; }
+    .product { border: 1px solid #ddd; border-radius: 10px; padding: 16px; }
+    .emoji { font-size: 42px; }
+    .price { font-size: 1.2rem; font-weight: 700; margin: 8px 0 12px; }
+    button { padding: 9px 13px; border: 1px solid #aaa; border-radius: 7px; background: white; cursor: pointer; }
+    button:hover { background: #f0f0f0; }
+    .cart-line { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .total { font-size: 1.25rem; font-weight: 700; margin-top: 14px; }
+    #activity { white-space: pre-wrap; background: #f5f5f5; padding: 12px; border-radius: 8px; min-height: 100px; }
+    .hint { background: #fff7d6; border: 1px solid #eadb8a; border-radius: 10px; padding: 14px; }
+    code { background: #eee; padding: 2px 5px; border-radius: 4px; }
   </style>
 </head>
 <body>
-  <h1>WebMCP Lab</h1>
-  <p>사람은 화면과 버튼을 사용하고, AI Agent는 WebMCP Tool을 사용할 수 있는 아주 작은 실험 페이지입니다.</p>
+  <h1>🛒 WebMCP 미니 쇼핑몰</h1>
+  <p class="intro">사람은 상품 버튼을 누르고, AI Agent는 WebMCP Tool로 같은 쇼핑몰의 기능을 사용할 수 있습니다.</p>
 
-  <div class="card">
-    <h2>기기 상태</h2>
-    <div id="status">OFF</div>
-    <p>이 예제는 실제 장치를 제어하지 않고 브라우저 안에서 상태만 변경합니다.</p>
-    <button id="onBtn">켜기</button>
-    <button id="offBtn">끄기</button>
+  <div class="hint">
+    <strong>이번 실험의 목표</strong><br>
+    단순히 상태가 ON/OFF로 바뀌는 것보다 직관적으로, <b>“AI가 쇼핑몰에서 실제로 상품을 찾고 장바구니에 담는 과정”</b>을 확인합니다.
   </div>
 
-  <div class="card">
-    <h2>실행 로그</h2>
-    <div id="log">아직 실행 기록이 없습니다.</div>
-  </div>
+  <section class="card">
+    <h2>상품</h2>
+    <div id="products" class="grid"></div>
+  </section>
+
+  <section class="cart">
+    <h2>🛍️ 장바구니</h2>
+    <div id="cart">장바구니가 비어 있습니다.</div>
+    <div id="total" class="total"></div>
+  </section>
+
+  <section class="activity">
+    <h2>🤖 최근 활동</h2>
+    <div id="activity">아직 활동이 없습니다.</div>
+  </section>
 
   <script>
-    let deviceState = 'OFF';
-    const statusEl = document.getElementById('status');
-    const logEl = document.getElementById('log');
+    const products = [
+      { id: 'coffee', name: '싱글오리진 원두 200g', price: 12000, emoji: '☕', description: '고소한 향의 데일리 원두' },
+      { id: 'tumbler', name: '스테인리스 텀블러', price: 18000, emoji: '🥤', description: '보온·보냉용 500mL' },
+      { id: 'cookie', name: '버터 쿠키 세트', price: 7000, emoji: '🍪', description: '간단한 간식 12개입' },
+      { id: 'notebook', name: '작업 노트', price: 6000, emoji: '📓', description: '아이디어 기록용 A5 노트' }
+    ];
 
-    function setState(next) {
-      deviceState = next;
-      statusEl.textContent = next;
+    let cart = {};
+    const won = n => n.toLocaleString('ko-KR') + '원';
+    const findProduct = id => products.find(p => p.id === id);
+
+    function log(message) {
       const time = new Date().toLocaleTimeString();
-      logEl.textContent = `[${time}] device_${next.toLowerCase()} 실행\n` + logEl.textContent;
-      return { state: deviceState, time };
+      const line = `[${time}] ${message}`;
+      const old = document.getElementById('activity').textContent;
+      document.getElementById('activity').textContent = old === '아직 활동이 없습니다.' ? line : line + '\n' + old;
     }
 
-    document.getElementById('onBtn').addEventListener('click', () => setState('ON'));
-    document.getElementById('offBtn').addEventListener('click', () => setState('OFF'));
+    function renderProducts() {
+      document.getElementById('products').innerHTML = products.map(p => `
+        <div class="product">
+          <div class="emoji">${p.emoji}</div>
+          <h3>${p.name}</h3>
+          <p>${p.description}</p>
+          <div class="price">${won(p.price)}</div>
+          <button onclick="addToCart('${p.id}', 1)">장바구니 담기</button>
+        </div>
+      `).join('');
+    }
 
-    // WebMCP: Chrome의 WebMCP 실험 환경에서 Agent가 사용할 Tool
+    function renderCart() {
+      const entries = Object.entries(cart).filter(([, qty]) => qty > 0);
+      const cartEl = document.getElementById('cart');
+      if (!entries.length) {
+        cartEl.textContent = '장바구니가 비어 있습니다.';
+        document.getElementById('total').textContent = '';
+        return;
+      }
+      cartEl.innerHTML = entries.map(([id, qty]) => {
+        const p = findProduct(id);
+        return `<div class="cart-line"><span>${p.emoji} ${p.name} × ${qty}</span><strong>${won(p.price * qty)}</strong></div>`;
+      }).join('');
+      const subtotal = entries.reduce((sum, [id, qty]) => sum + findProduct(id).price * qty, 0);
+      const shipping = subtotal >= 30000 ? 0 : 3000;
+      document.getElementById('total').textContent = `상품 ${won(subtotal)} + 배송비 ${won(shipping)} = ${won(subtotal + shipping)}`;
+    }
+
+    function addToCart(productId, quantity = 1) {
+      const p = findProduct(productId);
+      if (!p || quantity < 1) throw new Error('상품 또는 수량이 올바르지 않습니다.');
+      cart[productId] = (cart[productId] || 0) + quantity;
+      renderCart();
+      log(`${p.name} ${quantity}개를 장바구니에 담음`);
+      return getCart();
+    }
+
+    function removeFromCart(productId, quantity = 1) {
+      const p = findProduct(productId);
+      if (!p || quantity < 1) throw new Error('상품 또는 수량이 올바르지 않습니다.');
+      cart[productId] = Math.max(0, (cart[productId] || 0) - quantity);
+      renderCart();
+      log(`${p.name} ${quantity}개를 장바구니에서 제거`);
+      return getCart();
+    }
+
+    function searchProducts(keyword) {
+      const q = String(keyword || '').trim().toLowerCase();
+      const results = q ? products.filter(p => `${p.name} ${p.description}`.toLowerCase().includes(q)) : products;
+      log(`상품 검색: "${keyword}" → ${results.length}개 발견`);
+      return results.map(({ id, name, price, description }) => ({ id, name, price, description }));
+    }
+
+    function getCart() {
+      const items = Object.entries(cart).filter(([, qty]) => qty > 0).map(([id, quantity]) => {
+        const p = findProduct(id);
+        return { id, name: p.name, quantity, unit_price: p.price, line_total: p.price * quantity };
+      });
+      const subtotal = items.reduce((sum, x) => sum + x.line_total, 0);
+      return { items, subtotal, shipping: subtotal >= 30000 ? 0 : (items.length ? 3000 : 0), total: subtotal + (subtotal >= 30000 ? 0 : (items.length ? 3000 : 0)) };
+    }
+
+    // WebMCP: 페이지가 Agent에게 제공하는 실제 Tool들
     if (document.modelContext?.registerTool) {
       document.modelContext.registerTool({
-        name: 'get_device_status',
-        title: '기기 상태 조회',
-        description: '실험용 기기의 현재 ON/OFF 상태를 조회합니다.',
-        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+        name: 'search_products',
+        title: '상품 검색',
+        description: '미니 쇼핑몰에서 상품명이나 설명으로 상품을 검색합니다.',
+        inputSchema: {
+          type: 'object',
+          properties: { keyword: { type: 'string', description: '찾고 싶은 상품명이나 종류' } },
+          required: ['keyword'],
+          additionalProperties: false
+        },
         annotations: { readOnlyHint: true },
-        execute: async () => ({ state: deviceState })
+        execute: async ({ keyword }) => searchProducts(keyword)
       });
 
       document.modelContext.registerTool({
-        name: 'set_device_state',
-        title: '기기 상태 변경',
-        description: '실험용 기기를 ON 또는 OFF로 변경합니다.',
+        name: 'add_to_cart',
+        title: '장바구니 담기',
+        description: '상품 ID와 수량을 받아 장바구니에 상품을 추가합니다.',
         inputSchema: {
           type: 'object',
-          properties: { state: { type: 'string', enum: ['ON', 'OFF'] } },
-          required: ['state'],
+          properties: {
+            product_id: { type: 'string', description: '상품 ID' },
+            quantity: { type: 'integer', minimum: 1, description: '담을 수량' }
+          },
+          required: ['product_id', 'quantity'],
           additionalProperties: false
         },
-        execute: async ({ state }) => {
-          if (state !== 'ON' && state !== 'OFF') throw new Error('state must be ON or OFF');
-          return setState(state);
+        execute: async ({ product_id, quantity }) => addToCart(product_id, quantity)
+      });
+
+      document.modelContext.registerTool({
+        name: 'remove_from_cart',
+        title: '장바구니에서 빼기',
+        description: '장바구니에서 특정 상품을 지정한 수량만큼 제거합니다.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            product_id: { type: 'string', description: '상품 ID' },
+            quantity: { type: 'integer', minimum: 1, description: '제거할 수량' }
+          },
+          required: ['product_id', 'quantity'],
+          additionalProperties: false
+        },
+        execute: async ({ product_id, quantity }) => removeFromCart(product_id, quantity)
+      });
+
+      document.modelContext.registerTool({
+        name: 'get_cart',
+        title: '장바구니 확인',
+        description: '현재 장바구니 상품, 상품금액, 배송비, 총액을 확인합니다.',
+        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+        annotations: { readOnlyHint: true },
+        execute: async () => {
+          const result = getCart();
+          log('장바구니 상태 조회');
+          return result;
         }
       });
     }
+
+    renderProducts();
+    renderCart();
   </script>
 </body>
 </html>
