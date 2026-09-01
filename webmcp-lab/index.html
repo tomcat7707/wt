@@ -1,322 +1,46 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>WebMCP 쇼핑 실험실</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 32px auto; padding: 0 20px; background: #fafafa; color: #222; }
-    h1 { margin-bottom: 8px; }
-    .intro { color: #555; line-height: 1.6; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
-    .card, .cart, .activity { background: white; border: 1px solid #ddd; border-radius: 12px; padding: 18px; margin: 16px 0; }
-    .product { border: 1px solid #ddd; border-radius: 10px; padding: 16px; }
-    .emoji { font-size: 42px; }
-    .price { font-size: 1.2rem; font-weight: 700; margin: 8px 0 12px; }
-    button { padding: 9px 13px; border: 1px solid #aaa; border-radius: 7px; background: white; cursor: pointer; }
-    button:hover { background: #f0f0f0; }
-    .cart-line { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
-    .cart-name { min-width: 0; }
-    .cart-actions { display: flex; align-items: center; gap: 6px; }
-    .qty { min-width: 24px; text-align: center; font-weight: 700; }
-    .danger { border-color: #c9a0a0; }
-    .total { font-size: 1.25rem; font-weight: 700; margin-top: 14px; }
-    #activity { white-space: pre-wrap; background: #f5f5f5; padding: 12px; border-radius: 8px; min-height: 100px; }
-    .hint { background: #fff7d6; border: 1px solid #eadb8a; border-radius: 10px; padding: 14px; }
-    .collab { background: #edf6ff; border: 1px solid #b8d8f5; border-radius: 10px; padding: 14px; margin-top: 14px; line-height: 1.6; }
-    .goal { background: #f3f0ff; border: 1px solid #cbc1f2; border-radius: 10px; padding: 14px; margin-top: 14px; line-height: 1.6; }
-    .ok { color: #176b2d; font-weight: 700; }
-    .bad { color: #9a1f1f; font-weight: 700; }
-    code { background: #eee; padding: 2px 5px; border-radius: 4px; }
-  </style>
-</head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WebMCP 쇼핑 실험실</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:900px;margin:32px auto;padding:0 20px;background:#fafafa;color:#222}.intro{color:#555;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.card,.cart,.activity{background:white;border:1px solid #ddd;border-radius:12px;padding:18px;margin:16px 0}.product{border:1px solid #ddd;border-radius:10px;padding:16px}.emoji{font-size:42px}.price{font-size:1.2rem;font-weight:700;margin:8px 0 12px}button{padding:9px 13px;border:1px solid #aaa;border-radius:7px;background:white;cursor:pointer}button:hover{background:#f0f0f0}.cart-line{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #eee}.cart-actions{display:flex;align-items:center;gap:6px}.qty{min-width:24px;text-align:center;font-weight:700}.danger{border-color:#c9a0a0}.total{font-size:1.25rem;font-weight:700;margin-top:14px}#activity{white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:8px;min-height:100px}.hint{background:#fff7d6;border:1px solid #eadb8a;border-radius:10px;padding:14px}.collab{background:#edf6ff;border:1px solid #b8d8f5;border-radius:10px;padding:14px;margin-top:14px;line-height:1.6}.goal{background:#f3f0ff;border:1px solid #cbc1f2;border-radius:10px;padding:14px;margin-top:14px;line-height:1.6}.ok{font-weight:700}.bad{font-weight:700}code{background:#eee;padding:2px 5px;border-radius:4px}
+</style></head>
 <body>
-  <h1>🛒 WebMCP 미니 쇼핑몰</h1>
-  <p class="intro">사람은 화면과 버튼을 사용하고, AI Agent는 WebMCP Tool을 사용합니다. <b>둘은 같은 장바구니 상태를 공유합니다.</b></p>
-
-  <div class="hint">
-    <strong>이번 실험의 목표</strong><br>
-    AI가 작업을 수행한 뒤에도 <b>실제 장바구니 상태를 검증해서 목표가 달성되었는지 확인</b>할 수 있는지를 시험합니다.
-  </div>
-
-  <div class="collab">
-    <strong>협업 실험</strong><br>
-    ① AI가 상품을 담습니다 → ② 사람이 장바구니를 직접 바꿉니다 → ③ AI가 현재 상태를 다시 읽습니다 → ④ 필요하면 다시 작업합니다.
-  </div>
-
-  <div class="goal">
-    <strong>🎯 목표 검증 실험</strong><br>
-    이제 Agent는 <code>verify_cart_requirements</code> Tool을 이용해 "목표 상태"와 "실제 장바구니"를 비교할 수 있습니다.
-  </div>
-
-  <section class="card">
-    <h2>상품</h2>
-    <div id="products" class="grid"></div>
-  </section>
-
-  <section class="cart">
-    <h2>🛍️ 장바구니</h2>
-    <div id="cart">장바구니가 비어 있습니다.</div>
-    <div id="total" class="total"></div>
-  </section>
-
-  <section class="card">
-    <h2>🎯 마지막 검증 결과</h2>
-    <div id="verification">아직 검증을 실행하지 않았습니다.</div>
-  </section>
-
-  <section class="activity">
-    <h2>🤖 최근 활동</h2>
-    <div id="activity">아직 활동이 없습니다.</div>
-  </section>
-
-  <script>
-    const products = [
-      { id: 'coffee', name: '싱글오리진 원두 200g', price: 12000, emoji: '☕', description: '고소한 향의 데일리 원두' },
-      { id: 'tumbler', name: '스테인리스 텀블러', price: 18000, emoji: '🥤', description: '보온·보냉용 500mL' },
-      { id: 'cookie', name: '버터 쿠키 세트', price: 7000, emoji: '🍪', description: '간단한 간식 12개입' },
-      { id: 'notebook', name: '작업 노트', price: 6000, emoji: '📓', description: '아이디어 기록용 A5 노트' }
-    ];
-
-    const productIds = products.map(p => p.id);
-    let cart = {};
-    const won = n => n.toLocaleString('ko-KR') + '원';
-    const findProduct = id => products.find(p => p.id === id);
-
-    function log(message) {
-      const time = new Date().toLocaleTimeString();
-      const line = `[${time}] ${message}`;
-      const el = document.getElementById('activity');
-      const old = el.textContent;
-      el.textContent = old === '아직 활동이 없습니다.' ? line : line + '\n' + old;
-    }
-
-    function renderProducts() {
-      document.getElementById('products').innerHTML = products.map(p => `
-        <div class="product">
-          <div class="emoji">${p.emoji}</div>
-          <h3>${p.name}</h3>
-          <p>${p.description}</p>
-          <div class="price">${won(p.price)}</div>
-          <button onclick="addToCart('${p.id}', 1)">장바구니 담기</button>
-        </div>
-      `).join('');
-    }
-
-    function renderCart() {
-      const entries = Object.entries(cart).filter(([, qty]) => qty > 0);
-      const cartEl = document.getElementById('cart');
-      if (!entries.length) {
-        cartEl.textContent = '장바구니가 비어 있습니다.';
-        document.getElementById('total').textContent = '';
-        return;
-      }
-
-      cartEl.innerHTML = entries.map(([id, qty]) => {
-        const p = findProduct(id);
-        return `
-          <div class="cart-line">
-            <span class="cart-name">${p.emoji} ${p.name}</span>
-            <div class="cart-actions">
-              <button title="수량 줄이기" onclick="changeCartQuantity('${p.id}', -1)">−</button>
-              <span class="qty">${qty}</span>
-              <button title="수량 늘리기" onclick="changeCartQuantity('${p.id}', 1)">＋</button>
-              <button class="danger" onclick="removeAllFromCart('${p.id}')">삭제</button>
-            </div>
-            <strong>${won(p.price * qty)}</strong>
-          </div>
-        `;
-      }).join('');
-
-      const subtotal = entries.reduce((sum, [id, qty]) => sum + findProduct(id).price * qty, 0);
-      const shipping = subtotal >= 30000 ? 0 : 3000;
-      document.getElementById('total').textContent = `상품 ${won(subtotal)} + 배송비 ${won(shipping)} = ${won(subtotal + shipping)}`;
-    }
-
-    function getCart() {
-      const items = Object.entries(cart).filter(([, qty]) => qty > 0).map(([id, quantity]) => {
-        const p = findProduct(id);
-        return { id, name: p.name, quantity, unit_price: p.price, line_total: p.price * quantity };
-      });
-      const subtotal = items.reduce((sum, x) => sum + x.line_total, 0);
-      const shipping = subtotal >= 30000 ? 0 : (items.length ? 3000 : 0);
-      return { items, subtotal, shipping, total: subtotal + shipping };
-    }
-
-    function addToCart(productId, quantity = 1, actor = '사람') {
-      const p = findProduct(productId);
-      if (!p || quantity < 1) return { success: false, message: '상품을 찾을 수 없습니다.' };
-      cart[productId] = (cart[productId] || 0) + quantity;
-      renderCart();
-      log(`${actor}: ${p.name} ${quantity}개를 장바구니에 담음`);
-      return { success: true, message: `${p.name} ${quantity}개를 장바구니에 담았습니다.`, cart: getCart() };
-    }
-
-    function removeFromCart(productId, quantity = 1, actor = '사람') {
-      const p = findProduct(productId);
-      if (!p || quantity < 1) return { success: false, message: '상품을 찾을 수 없습니다.', cart: getCart() };
-      const current = cart[productId] || 0;
-      if (current < 1) return { success: false, message: `${p.name}은(는) 현재 장바구니에 없습니다.`, cart: getCart() };
-      const removed = Math.min(current, quantity);
-      cart[productId] = current - removed;
-      renderCart();
-      log(`${actor}: ${p.name} ${removed}개를 장바구니에서 제거`);
-      return { success: true, message: `${p.name} ${removed}개를 장바구니에서 제거했습니다.`, cart: getCart() };
-    }
-
-    function changeCartQuantity(productId, delta) {
-      if (delta > 0) addToCart(productId, delta, '사람');
-      else removeFromCart(productId, Math.abs(delta), '사람');
-    }
-
-    function removeAllFromCart(productId) {
-      const current = cart[productId] || 0;
-      if (current > 0) removeFromCart(productId, current, '사람');
-    }
-
-    function searchProducts(keyword) {
-      const q = String(keyword || '').trim().toLowerCase();
-      const results = q ? products.filter(p => `${p.name} ${p.description}`.toLowerCase().includes(q)) : products;
-      log(`Agent: 상품 검색 "${keyword}" → ${results.length}개 발견`);
-      return results.map(({ id, name, price, description }) => ({ id, name, price, description }));
-    }
-
-    function verifyCartRequirements(requirements) {
-      if (!Array.isArray(requirements) || requirements.length === 0) {
-        return { success: false, satisfied: false, message: '검증할 요구사항이 없습니다.' };
-      }
-
-      const actual = getCart();
-      const byId = Object.fromEntries(actual.items.map(item => [item.id, item]));
-      const missing = [];
-      const satisfied = [];
-
-      for (const req of requirements) {
-        const p = findProduct(req.product_id);
-        const requiredQty = Number(req.quantity);
-        const actualQty = byId[req.product_id]?.quantity || 0;
-        if (!p || !Number.isInteger(requiredQty) || requiredQty < 1) {
-          missing.push({ product_id: req.product_id, required: requiredQty, actual: actualQty, reason: 'invalid requirement' });
-          continue;
-        }
-        if (actualQty >= requiredQty) {
-          satisfied.push({ product_id: p.id, name: p.name, required: requiredQty, actual: actualQty });
-        } else {
-          missing.push({ product_id: p.id, name: p.name, required: requiredQty, actual: actualQty, shortfall: requiredQty - actualQty });
-        }
-      }
-
-      const result = {
-        success: true,
-        satisfied: missing.length === 0,
-        message: missing.length === 0 ? '모든 요구사항이 현재 장바구니 상태를 만족합니다.' : '현재 장바구니가 목표 상태를 아직 만족하지 않습니다.',
-        requirements,
-        satisfied,
-        missing,
-        cart: actual
-      };
-
-      const verificationEl = document.getElementById('verification');
-      if (result.satisfied) {
-        verificationEl.innerHTML = `<span class="ok">✅ 목표 달성</span><br>${result.message}`;
-      } else {
-        verificationEl.innerHTML = `<span class="bad">❌ 목표 미달성</span><br>${result.message}<br><br>부족한 항목: ${missing.map(x => `${x.name || x.product_id} ${x.shortfall || 0}개`).join(', ')}`;
-      }
-      log(`Agent: 장바구니 목표 검증 → ${result.satisfied ? '달성' : '미달성'}`);
-      return result;
-    }
-
-    if (document.modelContext?.registerTool) {
-      document.modelContext.registerTool({
-        name: 'search_products',
-        title: '상품 검색',
-        description: '미니 쇼핑몰에서 상품명이나 설명으로 상품을 검색합니다. 검색 결과의 id를 장바구니 Tool에 사용할 수 있습니다.',
-        inputSchema: {
-          type: 'object',
-          properties: { keyword: { type: 'string', description: '찾고 싶은 상품명이나 종류. 예: 텀블러, 원두, 쿠키, 노트' } },
-          required: ['keyword'],
-          additionalProperties: false
-        },
-        annotations: { readOnlyHint: true },
-        execute: async ({ keyword }) => searchProducts(keyword)
-      });
-
-      document.modelContext.registerTool({
-        name: 'add_to_cart',
-        title: '장바구니 담기',
-        description: '상품 ID와 수량을 받아 장바구니에 추가합니다. 실행 후 현재 장바구니 전체 상태를 반환합니다.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            product_id: { type: 'string', enum: productIds, description: '상품 ID' },
-            quantity: { type: 'integer', minimum: 1, description: '담을 수량' }
-          },
-          required: ['product_id', 'quantity'],
-          additionalProperties: false
-        },
-        execute: async ({ product_id, quantity }) => addToCart(product_id, quantity, 'Agent')
-      });
-
-      document.modelContext.registerTool({
-        name: 'remove_from_cart',
-        title: '장바구니에서 빼기',
-        description: '장바구니에서 특정 상품을 지정한 수량만큼 제거합니다. 사람이 화면에서 바꾼 상태도 실제 상태로 반영됩니다.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            product_id: { type: 'string', enum: productIds, description: '상품 ID' },
-            quantity: { type: 'integer', minimum: 1, description: '제거할 수량' }
-          },
-          required: ['product_id', 'quantity'],
-          additionalProperties: false
-        },
-        execute: async ({ product_id, quantity }) => removeFromCart(product_id, quantity, 'Agent')
-      });
-
-      document.modelContext.registerTool({
-        name: 'get_cart',
-        title: '장바구니 확인',
-        description: '현재 장바구니의 실제 상태를 조회합니다. 사람이 화면에서 바꾼 내용도 포함됩니다.',
-        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-        annotations: { readOnlyHint: true },
-        execute: async () => {
-          const result = getCart();
-          log('Agent: 장바구니 상태 조회');
-          return result;
-        }
-      });
-
-      document.modelContext.registerTool({
-        name: 'verify_cart_requirements',
-        title: '장바구니 목표 검증',
-        description: '현재 장바구니가 지정한 상품별 최소 수량 요구사항을 만족하는지 확인합니다. 작업 완료 여부를 판단할 때 이 Tool의 satisfied 값을 사용하세요.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            requirements: {
-              type: 'array',
-              description: '요구 상품 목록. 예: [{"product_id":"coffee","quantity":10},{"product_id":"cookie","quantity":30}]',
-              items: {
-                type: 'object',
-                properties: {
-                  product_id: { type: 'string', enum: productIds },
-                  quantity: { type: 'integer', minimum: 1 }
-                },
-                required: ['product_id', 'quantity'],
-                additionalProperties: false
-              }
-            }
-          },
-          required: ['requirements'],
-          additionalProperties: false
-        },
-        annotations: { readOnlyHint: true },
-        execute: async ({ requirements }) => verifyCartRequirements(requirements)
-      });
-    }
-
-    renderProducts();
-    renderCart();
-  </script>
-</body>
-</html>
+<h1>🛒 WebMCP 미니 쇼핑몰</h1>
+<p class="intro">사람은 화면과 버튼을 사용하고, AI Agent는 WebMCP Tool을 사용합니다. <b>둘은 같은 장바구니 상태를 공유합니다.</b></p>
+<div class="hint"><strong>이번 실험의 목표</strong><br>AI가 작업을 수행한 뒤 <b>실제 장바구니 상태를 검증</b>해서 목표가 달성되었는지 확인합니다.</div>
+<div class="collab"><strong>협업 실험</strong><br>① AI가 상품을 담습니다 → ② 사람이 장바구니를 직접 바꿉니다 → ③ AI가 현재 상태를 다시 읽습니다 → ④ 필요하면 다시 작업합니다.</div>
+<div class="goal"><strong>🎯 목표 검증</strong><br><code>verify_cart_requirements</code>는 현재 실제 장바구니와 지정한 상품별 최소 수량을 비교합니다. 검증 결과의 <code>satisfied</code>가 <b>true</b>일 때만 목표 달성으로 판단해야 합니다.</div>
+<section class="card"><h2>상품</h2><div id="products" class="grid"></div></section>
+<section class="cart"><h2>🛍️ 장바구니</h2><div id="cart">장바구니가 비어 있습니다.</div><div id="total" class="total"></div></section>
+<section class="card"><h2>🎯 마지막 검증 결과</h2><div id="verification">아직 검증을 실행하지 않았습니다.</div></section>
+<section class="activity"><h2>🤖 최근 활동</h2><div id="activity">아직 활동이 없습니다.</div></section>
+<script>
+const products=[
+{id:'coffee',name:'싱글오리진 원두 200g',price:12000,emoji:'☕',description:'고소한 향의 데일리 원두',category:'food',aliases:['커피','원두','coffee']},
+{id:'tumbler',name:'스테인리스 텀블러',price:18000,emoji:'🥤',description:'보온·보냉용 500mL',category:'non-food',aliases:['텀블러','컵','물병','tumbler']},
+{id:'cookie',name:'버터 쿠키 세트',price:7000,emoji:'🍪',description:'간단한 간식 12개입',category:'food',aliases:['쿠키','과자','간식','cookie']},
+{id:'notebook',name:'작업 노트',price:6000,emoji:'📓',description:'아이디어 기록용 A5 노트',category:'non-food',aliases:['노트','작업노트','문구','notebook']}
+];
+const productIds=products.map(p=>p.id);let cart={};const won=n=>n.toLocaleString('ko-KR')+'원';const findProduct=id=>products.find(p=>p.id===id);
+function log(message){const el=document.getElementById('activity'),line=`[${new Date().toLocaleTimeString()}] ${message}`,old=el.textContent;el.textContent=old==='아직 활동이 없습니다.'?line:line+'\n'+old}
+function renderProducts(){document.getElementById('products').innerHTML=products.map(p=>`<div class="product"><div class="emoji">${p.emoji}</div><h3>${p.name}</h3><p>${p.description}</p><div class="price">${won(p.price)}</div><button onclick="addToCart('${p.id}',1,'사람')">장바구니 담기</button></div>`).join('')}
+function renderCart(){const entries=Object.entries(cart).filter(([,q])=>q>0),el=document.getElementById('cart');if(!entries.length){el.textContent='장바구니가 비어 있습니다.';document.getElementById('total').textContent='';return}el.innerHTML=entries.map(([id,q])=>{const p=findProduct(id);return `<div class="cart-line"><span>${p.emoji} ${p.name}</span><div class="cart-actions"><button onclick="changeCartQuantity('${id}',-1)">−</button><span class="qty">${q}</span><button onclick="changeCartQuantity('${id}',1)">＋</button><button class="danger" onclick="removeAllFromCart('${id}')">삭제</button></div><strong>${won(p.price*q)}</strong></div>`}).join('');const s=entries.reduce((a,[id,q])=>a+findProduct(id).price*q,0),ship=s>=30000?0:3000;document.getElementById('total').textContent=`상품 ${won(s)} + 배송비 ${won(ship)} = ${won(s+ship)}`}
+function getCart(){const items=Object.entries(cart).filter(([,q])=>q>0).map(([id,quantity])=>{const p=findProduct(id);return{id,name:p.name,category:p.category,quantity,unit_price:p.price,line_total:p.price*quantity}}),subtotal=items.reduce((a,x)=>a+x.line_total,0),shipping=subtotal>=30000?0:(items.length?3000:0);return{items,subtotal,shipping,total:subtotal+shipping}}
+function addToCart(id,q=1,actor='Agent'){const p=findProduct(id);if(!p||q<1)return{success:false,message:'상품을 찾을 수 없습니다.',cart:getCart()};cart[id]=(cart[id]||0)+q;renderCart();log(`${actor}: ${p.name} ${q}개를 장바구니에 담음`);return{success:true,message:`${p.name} ${q}개를 장바구니에 담았습니다.`,cart:getCart()}}
+function removeFromCart(id,q=1,actor='Agent'){const p=findProduct(id);if(!p||q<1)return{success:false,message:'상품을 찾을 수 없습니다.',cart:getCart()};const cur=cart[id]||0;if(cur<1)return{success:false,message:`${p.name}은(는) 현재 장바구니에 없습니다.`,cart:getCart()};const removed=Math.min(cur,q);cart[id]=cur-removed;renderCart();log(`${actor}: ${p.name} ${removed}개를 장바구니에서 제거`);return{success:true,message:`${p.name} ${removed}개를 장바구니에서 제거했습니다.`,cart:getCart()}}
+function changeCartQuantity(id,d){d>0?addToCart(id,d,'사람'):removeFromCart(id,Math.abs(d),'사람')}function removeAllFromCart(id){const q=cart[id]||0;if(q>0)removeFromCart(id,q,'사람')}
+function clearCart(){cart={};renderCart();log('Agent: 장바구니 전체 비움');return{success:true,message:'장바구니를 비웠습니다.',cart:getCart()}}
+function searchProducts(keyword){const raw=String(keyword??'').trim().toLowerCase();const results=!raw?products:products.filter(p=>{const hay=[p.name,p.description,p.category,...p.aliases].join(' ').toLowerCase();return hay.includes(raw)});log(`Agent: 상품 검색 "${keyword}" → ${results.length}개 발견`);return results.map(({id,name,price,description,category,aliases})=>({id,name,price,description,category,aliases}))}
+function verifyCartRequirements(requirements){if(!Array.isArray(requirements)||!requirements.length)return{success:false,satisfied:false,message:'검증할 요구사항이 없습니다.',cart:getCart()};const actual=getCart(),byId=Object.fromEntries(actual.items.map(x=>[x.id,x])),missing=[],satisfied=[];for(const r of requirements){const p=findProduct(r.product_id),need=Number(r.quantity),have=byId[r.product_id]?.quantity||0;if(!p||!Number.isInteger(need)||need<1){missing.push({product_id:r.product_id,required:need,actual:have,reason:'invalid requirement'});continue}if(have>=need)satisfied.push({product_id:p.id,name:p.name,required:need,actual:have});else missing.push({product_id:p.id,name:p.name,required:need,actual:have,shortfall:need-have})}const result={success:true,satisfied:missing.length===0,message:missing.length===0?'모든 요구사항이 현재 장바구니 상태를 만족합니다.':'현재 장바구니가 목표 상태를 아직 만족하지 않습니다.',requirements,satisfied,missing,cart:actual};document.getElementById('verification').innerHTML=result.satisfied?'<span class="ok">✅ 목표 달성</span><br>'+result.message:'<span class="bad">❌ 목표 미달성</span><br>'+result.message+'<br><br>부족한 항목: '+missing.map(x=>`${x.name||x.product_id} ${x.shortfall||0}개`).join(', ');log(`Agent: 장바구니 목표 검증 → ${result.satisfied?'달성':'미달성'}`);return result}
+if(document.modelContext?.registerTool){
+ document.modelContext.registerTool({name:'search_products',title:'상품 검색',description:'상품명, 별칭, 설명 또는 카테고리로 검색합니다. 반드시 결과에 실제 가격이 포함됩니다. 예: "커피"는 coffee(싱글오리진 원두 200g, 12,000원), "먹을 수 있는 제품"은 category=food인 원두와 쿠키를 찾을 수 있습니다.',inputSchema:{type:'object',properties:{keyword:{type:'string',description:'상품명/종류/카테고리. 예: 커피, 원두, 쿠키, 먹을 수 있는 제품'}},required:['keyword'],additionalProperties:false},annotations:{readOnlyHint:true},execute:async({keyword})=>searchProducts(keyword)});
+ document.modelContext.registerTool({name:'clear_cart',title:'장바구니 비우기',description:'현재 장바구니의 모든 상품을 제거하고 실제 현재 상태를 반환합니다.',inputSchema:{type:'object',properties:{},additionalProperties:false},execute:async()=>clearCart()});
+ document.modelContext.registerTool({name:'add_to_cart',title:'장바구니 담기',description:'상품 ID와 수량을 받아 추가합니다. 실행 후 현재 장바구니 전체 상태와 실제 합계를 반환합니다.',inputSchema:{type:'object',properties:{product_id:{type:'string',enum:productIds},quantity:{type:'integer',minimum:1}},required:['product_id','quantity'],additionalProperties:false},execute:async({product_id,quantity})=>addToCart(product_id,quantity,'Agent')});
+ document.modelContext.registerTool({name:'remove_from_cart',title:'장바구니에서 빼기',description:'현재 장바구니에서 상품을 제거합니다. 실행 후 실제 장바구니 상태를 반환합니다.',inputSchema:{type:'object',properties:{product_id:{type:'string',enum:productIds},quantity:{type:'integer',minimum:1}},required:['product_id','quantity'],additionalProperties:false},execute:async({product_id,quantity})=>removeFromCart(product_id,quantity,'Agent')});
+ document.modelContext.registerTool({name:'get_cart',title:'장바구니 확인',description:'현재 실제 장바구니 상태와 가격을 조회합니다. 사람이 화면에서 변경한 내용도 포함합니다.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:async()=>{const r=getCart();log('Agent: 장바구니 상태 조회');return r}});
+ document.modelContext.registerTool({name:'verify_cart_requirements',title:'장바구니 목표 검증',description:'현재 실제 장바구니가 지정한 상품별 최소 수량을 만족하는지 검증합니다. 작업 완료 여부는 반드시 반환값 satisfied를 기준으로 판단하세요. satisfied=true가 아니면 작업을 완료했다고 말하지 마세요.',inputSchema:{type:'object',properties:{requirements:{type:'array',items:{type:'object',properties:{product_id:{type:'string',enum:productIds},quantity:{type:'integer',minimum:1}},required:['product_id','quantity'],additionalProperties:false}}},required:['requirements'],additionalProperties:false},annotations:{readOnlyHint:true},execute:async({requirements})=>verifyCartRequirements(requirements)});
+}
+renderProducts();renderCart();
+</script></body></html>
