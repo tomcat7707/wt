@@ -28,7 +28,7 @@
 
   <div class="hint">
     <strong>이번 실험의 목표</strong><br>
-    단순히 상태가 ON/OFF로 바뀌는 것보다 직관적으로, <b>“AI가 쇼핑몰에서 실제로 상품을 찾고 장바구니에 담는 과정”</b>을 확인합니다.
+    단순히 상태가 ON/OFF로 바뀌는 것보다 직관적으로, <b>“AI가 쇼핑몰에서 상품을 찾고 장바구니를 조작하는 과정”</b>을 확인합니다.
   </div>
 
   <section class="card">
@@ -55,6 +55,7 @@
       { id: 'notebook', name: '작업 노트', price: 6000, emoji: '📓', description: '아이디어 기록용 A5 노트' }
     ];
 
+    const productIds = products.map(p => p.id);
     let cart = {};
     const won = n => n.toLocaleString('ko-KR') + '원';
     const findProduct = id => products.find(p => p.id === id);
@@ -97,20 +98,20 @@
 
     function addToCart(productId, quantity = 1) {
       const p = findProduct(productId);
-      if (!p || quantity < 1) throw new Error('상품 또는 수량이 올바르지 않습니다.');
+      if (!p || quantity < 1) return { success: false, message: '상품을 찾을 수 없습니다. 먼저 상품 검색 결과의 product_id를 사용하세요.' };
       cart[productId] = (cart[productId] || 0) + quantity;
       renderCart();
       log(`${p.name} ${quantity}개를 장바구니에 담음`);
-      return getCart();
+      return { success: true, message: `${p.name} ${quantity}개를 장바구니에 담았습니다.`, cart: getCart() };
     }
 
     function removeFromCart(productId, quantity = 1) {
       const p = findProduct(productId);
-      if (!p || quantity < 1) throw new Error('상품 또는 수량이 올바르지 않습니다.');
+      if (!p || quantity < 1) return { success: false, message: '상품을 찾을 수 없습니다. 먼저 상품 검색 결과의 product_id를 사용하세요.' };
       cart[productId] = Math.max(0, (cart[productId] || 0) - quantity);
       renderCart();
       log(`${p.name} ${quantity}개를 장바구니에서 제거`);
-      return getCart();
+      return { success: true, message: `${p.name} ${quantity}개를 장바구니에서 제거했습니다.`, cart: getCart() };
     }
 
     function searchProducts(keyword) {
@@ -126,7 +127,8 @@
         return { id, name: p.name, quantity, unit_price: p.price, line_total: p.price * quantity };
       });
       const subtotal = items.reduce((sum, x) => sum + x.line_total, 0);
-      return { items, subtotal, shipping: subtotal >= 30000 ? 0 : (items.length ? 3000 : 0), total: subtotal + (subtotal >= 30000 ? 0 : (items.length ? 3000 : 0)) };
+      const shipping = subtotal >= 30000 ? 0 : (items.length ? 3000 : 0);
+      return { items, subtotal, shipping, total: subtotal + shipping };
     }
 
     // WebMCP: 페이지가 Agent에게 제공하는 실제 Tool들
@@ -134,10 +136,10 @@
       document.modelContext.registerTool({
         name: 'search_products',
         title: '상품 검색',
-        description: '미니 쇼핑몰에서 상품명이나 설명으로 상품을 검색합니다.',
+        description: '미니 쇼핑몰에서 상품명이나 설명으로 상품을 검색합니다. 검색 결과에는 장바구니에 사용할 product_id가 포함됩니다.',
         inputSchema: {
           type: 'object',
-          properties: { keyword: { type: 'string', description: '찾고 싶은 상품명이나 종류' } },
+          properties: { keyword: { type: 'string', description: '찾고 싶은 상품명이나 종류. 예: 텀블러, 원두, 쿠키, 노트' } },
           required: ['keyword'],
           additionalProperties: false
         },
@@ -148,11 +150,15 @@
       document.modelContext.registerTool({
         name: 'add_to_cart',
         title: '장바구니 담기',
-        description: '상품 ID와 수량을 받아 장바구니에 상품을 추가합니다.',
+        description: '상품 ID와 수량을 받아 장바구니에 상품을 추가합니다. 상품 ID는 coffee=원두, tumbler=텀블러, cookie=쿠키, notebook=작업 노트입니다.',
         inputSchema: {
           type: 'object',
           properties: {
-            product_id: { type: 'string', description: '상품 ID' },
+            product_id: {
+              type: 'string',
+              enum: productIds,
+              description: '상품 ID: coffee(원두), tumbler(텀블러), cookie(쿠키), notebook(작업 노트)'
+            },
             quantity: { type: 'integer', minimum: 1, description: '담을 수량' }
           },
           required: ['product_id', 'quantity'],
@@ -164,11 +170,15 @@
       document.modelContext.registerTool({
         name: 'remove_from_cart',
         title: '장바구니에서 빼기',
-        description: '장바구니에서 특정 상품을 지정한 수량만큼 제거합니다.',
+        description: '장바구니에서 특정 상품을 지정한 수량만큼 제거합니다. 상품 ID는 coffee=원두, tumbler=텀블러, cookie=쿠키, notebook=작업 노트입니다.',
         inputSchema: {
           type: 'object',
           properties: {
-            product_id: { type: 'string', description: '상품 ID' },
+            product_id: {
+              type: 'string',
+              enum: productIds,
+              description: '상품 ID: coffee(원두), tumbler(텀블러), cookie(쿠키), notebook(작업 노트)'
+            },
             quantity: { type: 'integer', minimum: 1, description: '제거할 수량' }
           },
           required: ['product_id', 'quantity'],
