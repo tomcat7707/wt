@@ -18,9 +18,9 @@ body{font-family:system-ui,sans-serif;max-width:900px;margin:32px auto;padding:0
 <section class="activity"><h2>🤖 최근 활동</h2><div id="activity">아직 활동이 없습니다.</div></section>
 <script>
 const products=[
-{id:'coffee',name:'싱글오리진 원두 200g',price:12000,emoji:'☕',description:'고소한 향의 데일리 원두',category:'food',aliases:['커피','원두','coffee']},
+{id:'coffee',name:'싱글오리진 원두 200g',price:12000,emoji:'☕',description:'고소한 향의 데일리 원두',category:'food',aliases:['커피','원두','coffee','마실것','음료']},
 {id:'tumbler',name:'스테인리스 텀블러',price:18000,emoji:'🥤',description:'보온·보냉용 500mL',category:'non-food',aliases:['텀블러','컵','물병','tumbler']},
-{id:'cookie',name:'버터 쿠키 세트',price:7000,emoji:'🍪',description:'간단한 간식 12개입',category:'food',aliases:['쿠키','과자','간식','cookie']},
+{id:'cookie',name:'버터 쿠키 세트',price:7000,emoji:'🍪',description:'간단한 간식 12개입',category:'food',aliases:['쿠키','과자','간식','cookie','먹거리']},
 {id:'notebook',name:'작업 노트',price:6000,emoji:'📓',description:'아이디어 기록용 A5 노트',category:'non-food',aliases:['노트','작업노트','문구','notebook']}
 ];
 const productIds=products.map(p=>p.id);let cart={};const won=n=>n.toLocaleString('ko-KR')+'원';const findProduct=id=>products.find(p=>p.id===id);
@@ -32,10 +32,25 @@ function addToCart(id,q=1,actor='Agent'){const p=findProduct(id);if(!p||q<1)retu
 function removeFromCart(id,q=1,actor='Agent'){const p=findProduct(id);if(!p||q<1)return{success:false,message:'상품을 찾을 수 없습니다.',cart:getCart()};const cur=cart[id]||0;if(cur<1)return{success:false,message:`${p.name}은(는) 현재 장바구니에 없습니다.`,cart:getCart()};const removed=Math.min(cur,q);cart[id]=cur-removed;renderCart();log(`${actor}: ${p.name} ${removed}개를 장바구니에서 제거`);return{success:true,message:`${p.name} ${removed}개를 장바구니에서 제거했습니다.`,cart:getCart()}}
 function changeCartQuantity(id,d){d>0?addToCart(id,d,'사람'):removeFromCart(id,Math.abs(d),'사람')}function removeAllFromCart(id){const q=cart[id]||0;if(q>0)removeFromCart(id,q,'사람')}
 function clearCart(){cart={};renderCart();log('Agent: 장바구니 전체 비움');return{success:true,message:'장바구니를 비웠습니다.',cart:getCart()}}
-function searchProducts(keyword){const raw=String(keyword??'').trim().toLowerCase();const results=!raw?products:products.filter(p=>{const hay=[p.name,p.description,p.category,...p.aliases].join(' ').toLowerCase();return hay.includes(raw)});log(`Agent: 상품 검색 "${keyword}" → ${results.length}개 발견`);return results.map(({id,name,price,description,category,aliases})=>({id,name,price,description,category,aliases}))}
+function normalizeSearch(text){return String(text??'').trim().toLowerCase().replace(/\s+/g,'')}
+function searchProducts(keyword){
+ const raw=normalizeSearch(keyword);
+ const foodTerms=['먹을수있는제품','먹을수있는것','먹을것','먹거리','식품','음식','식료품','food','foodproduct','foodproducts'];
+ const drinkTerms=['마실수있는것','마실것','음료','drink'];
+ let results;
+ if(!raw) results=products;
+ else if(foodTerms.some(t=>raw.includes(t))) results=products.filter(p=>p.category==='food');
+ else if(drinkTerms.some(t=>raw.includes(t))) results=products.filter(p=>p.category==='food' && p.aliases.some(a=>['커피','원두','마실것','음료'].includes(a)));
+ else results=products.filter(p=>{
+   const hay=[p.name,p.description,p.category,...p.aliases].map(normalizeSearch).join(' ');
+   return hay.includes(raw) || raw.includes(normalizeSearch(p.id));
+ });
+ log(`Agent: 상품 검색 "${keyword}" → ${results.length}개 발견`);
+ return results.map(({id,name,price,description,category,aliases})=>({id,name,price,description,category,aliases}));
+}
 function verifyCartRequirements(requirements){if(!Array.isArray(requirements)||!requirements.length)return{success:false,satisfied:false,message:'검증할 요구사항이 없습니다.',cart:getCart()};const actual=getCart(),byId=Object.fromEntries(actual.items.map(x=>[x.id,x])),missing=[],satisfied=[];for(const r of requirements){const p=findProduct(r.product_id),need=Number(r.quantity),have=byId[r.product_id]?.quantity||0;if(!p||!Number.isInteger(need)||need<1){missing.push({product_id:r.product_id,required:need,actual:have,reason:'invalid requirement'});continue}if(have>=need)satisfied.push({product_id:p.id,name:p.name,required:need,actual:have});else missing.push({product_id:p.id,name:p.name,required:need,actual:have,shortfall:need-have})}const result={success:true,satisfied:missing.length===0,message:missing.length===0?'모든 요구사항이 현재 장바구니 상태를 만족합니다.':'현재 장바구니가 목표 상태를 아직 만족하지 않습니다.',requirements,satisfied,missing,cart:actual};document.getElementById('verification').innerHTML=result.satisfied?'<span class="ok">✅ 목표 달성</span><br>'+result.message:'<span class="bad">❌ 목표 미달성</span><br>'+result.message+'<br><br>부족한 항목: '+missing.map(x=>`${x.name||x.product_id} ${x.shortfall||0}개`).join(', ');log(`Agent: 장바구니 목표 검증 → ${result.satisfied?'달성':'미달성'}`);return result}
 if(document.modelContext?.registerTool){
- document.modelContext.registerTool({name:'search_products',title:'상품 검색',description:'상품명, 별칭, 설명 또는 카테고리로 검색합니다. 반드시 결과에 실제 가격이 포함됩니다. 예: "커피"는 coffee(싱글오리진 원두 200g, 12,000원), "먹을 수 있는 제품"은 category=food인 원두와 쿠키를 찾을 수 있습니다.',inputSchema:{type:'object',properties:{keyword:{type:'string',description:'상품명/종류/카테고리. 예: 커피, 원두, 쿠키, 먹을 수 있는 제품'}},required:['keyword'],additionalProperties:false},annotations:{readOnlyHint:true},execute:async({keyword})=>searchProducts(keyword)});
+ document.modelContext.registerTool({name:'search_products',title:'상품 검색',description:'상품명, 별칭, 설명 또는 의미상 카테고리로 검색합니다. 결과에는 항상 실제 가격과 category가 포함됩니다. "커피"는 coffee, "먹을 수 있는 제품"은 category=food인 상품을 검색합니다.',inputSchema:{type:'object',properties:{keyword:{type:'string',description:'상품명/종류/카테고리/자연어 조건. 예: 커피, 원두, 쿠키, 먹을 수 있는 제품'}},required:['keyword'],additionalProperties:false},annotations:{readOnlyHint:true},execute:async({keyword})=>searchProducts(keyword)});
  document.modelContext.registerTool({name:'clear_cart',title:'장바구니 비우기',description:'현재 장바구니의 모든 상품을 제거하고 실제 현재 상태를 반환합니다.',inputSchema:{type:'object',properties:{},additionalProperties:false},execute:async()=>clearCart()});
  document.modelContext.registerTool({name:'add_to_cart',title:'장바구니 담기',description:'상품 ID와 수량을 받아 추가합니다. 실행 후 현재 장바구니 전체 상태와 실제 합계를 반환합니다.',inputSchema:{type:'object',properties:{product_id:{type:'string',enum:productIds},quantity:{type:'integer',minimum:1}},required:['product_id','quantity'],additionalProperties:false},execute:async({product_id,quantity})=>addToCart(product_id,quantity,'Agent')});
  document.modelContext.registerTool({name:'remove_from_cart',title:'장바구니에서 빼기',description:'현재 장바구니에서 상품을 제거합니다. 실행 후 실제 장바구니 상태를 반환합니다.',inputSchema:{type:'object',properties:{product_id:{type:'string',enum:productIds},quantity:{type:'integer',minimum:1}},required:['product_id','quantity'],additionalProperties:false},execute:async({product_id,quantity})=>removeFromCart(product_id,quantity,'Agent')});
