@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>WebMCP Lab</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 20px; }
+    .card { border: 1px solid #ccc; border-radius: 12px; padding: 20px; margin: 16px 0; }
+    button { padding: 10px 14px; margin-right: 8px; cursor: pointer; }
+    #status { font-size: 1.4rem; font-weight: 700; }
+    #log { white-space: pre-wrap; background: #f5f5f5; padding: 12px; border-radius: 8px; min-height: 120px; }
+  </style>
+</head>
+<body>
+  <h1>WebMCP Lab</h1>
+  <p>사람은 화면과 버튼을 사용하고, AI Agent는 WebMCP Tool을 사용할 수 있는 아주 작은 실험 페이지입니다.</p>
+
+  <div class="card">
+    <h2>기기 상태</h2>
+    <div id="status">OFF</div>
+    <p>이 예제는 실제 장치를 제어하지 않고 브라우저 안에서 상태만 변경합니다.</p>
+    <button id="onBtn">켜기</button>
+    <button id="offBtn">끄기</button>
+  </div>
+
+  <div class="card">
+    <h2>실행 로그</h2>
+    <div id="log">아직 실행 기록이 없습니다.</div>
+  </div>
+
+  <script>
+    let deviceState = 'OFF';
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
+
+    function setState(next) {
+      deviceState = next;
+      statusEl.textContent = next;
+      const time = new Date().toLocaleTimeString();
+      logEl.textContent = `[${time}] device_${next.toLowerCase()} 실행\n` + logEl.textContent;
+      return { state: deviceState, time };
+    }
+
+    document.getElementById('onBtn').addEventListener('click', () => setState('ON'));
+    document.getElementById('offBtn').addEventListener('click', () => setState('OFF'));
+
+    // WebMCP: Chrome의 WebMCP 실험 환경에서 Agent가 사용할 Tool
+    if (document.modelContext?.registerTool) {
+      document.modelContext.registerTool({
+        name: 'get_device_status',
+        title: '기기 상태 조회',
+        description: '실험용 기기의 현재 ON/OFF 상태를 조회합니다.',
+        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+        annotations: { readOnlyHint: true },
+        execute: async () => ({ state: deviceState })
+      });
+
+      document.modelContext.registerTool({
+        name: 'set_device_state',
+        title: '기기 상태 변경',
+        description: '실험용 기기를 ON 또는 OFF로 변경합니다.',
+        inputSchema: {
+          type: 'object',
+          properties: { state: { type: 'string', enum: ['ON', 'OFF'] } },
+          required: ['state'],
+          additionalProperties: false
+        },
+        execute: async ({ state }) => {
+          if (state !== 'ON' && state !== 'OFF') throw new Error('state must be ON or OFF');
+          return setState(state);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
